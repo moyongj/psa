@@ -92,9 +92,82 @@
         }
 
         .suggestion {
-            font-size: 18px;
+            font-size: 20px;
             color: #FF4444;
             white-space: pre-wrap;
+        }
+
+        .generator-section {
+            background: #2D2D2D;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .generator-controls {
+            display: grid;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .length-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            align-items: center;
+            font-size: 18px; /* 调小字体 */
+        }
+
+        .options-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            font-size: 18px; /* 更小的字体 */
+        }
+
+        .generator-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        #pwd-length {
+            width: 80px;
+            padding: 6px;
+            font-size: 14px;
+        }
+        .history-panel {
+            background: #333;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid #444;
+            font-size: 0.9em;
+        }
+
+        .breach-alert {
+            color: #ff4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .copy-btn {
+            background: #007ACC;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -114,6 +187,51 @@
             <div class="result-item entropy-value">熵值：-</div>
             <div class="result-item suggestion">安全建议：等待输入...</div>
         </div>
+
+        <!-- 修改密码生成器部分 -->
+        <div class="generator-section">
+            <h3>🔑 安全密码生成器</h3>
+            <div class="generator-controls">
+                <!-- 密码长度单独一行 -->
+                <div class="length-row">
+                    <label>密码长度：</label>
+                    <input type="number" id="pwd-length" value="12" min="8" max="32">
+                </div>
+
+                <!-- 选项单独一行 -->
+                <div class="options-row">
+                    <div class="generator-option">
+                        <input type="checkbox" id="lower" checked> 
+                        <label for="lower">小写字母</label>
+                    </div>
+                    <div class="generator-option">
+                        <input type="checkbox" id="upper"> 
+                        <label for="upper">大写字母</label>
+                    </div>
+                    <div class="generator-option">
+                        <input type="checkbox" id="numbers" checked> 
+                        <label for="numbers">数字</label>
+                    </div>
+                    <div class="generator-option">
+                        <input type="checkbox" id="symbols"> 
+                        <label for="symbols">符号</label>
+                    </div>
+                </div>
+            </div>
+                    <button class="analyze-btn" onclick="generatePassword()">生成密码</button>
+                    <div class="generated-password" style="margin-top:15px">
+                        <input type="text" id="generated-pwd" readonly 
+                               style="width:60%;padding:8px">
+                        <button class="copy-btn" onclick="copyPassword()">复制</button>
+                    </div>
+                </div>
+        
+                <!-- 新增历史记录 -->
+                <div class="history-panel">
+                    <h4>📜 分析历史（最近10条）</h4>
+                    <div id="history-list"></div>
+                </div>
+            </div>
     </div>
 
     <script>
@@ -218,7 +336,102 @@
             document.querySelector('.strength-level').style.color = strength.color;
             document.querySelector('.entropy-value').textContent = `熵值：${entropy.toFixed(1)} bits`;
             document.querySelector('.suggestion').textContent = `安全建议：\n${suggestions}`;
+
+            updateHistory({
+                password: password, // 添加这行传递原始密码
+                strength: strength,
+                crackTime: crackTimeText, 
+                entropy: entropy
+            }); // 增加这个函数调用
+
         }
+                // ================= 新增密码生成器功能 =================
+                const charSets = {
+            lower: 'abcdefghijklmnopqrstuvwxyz',
+            upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            numbers: '0123456789',
+            symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+        };
+
+        function generatePassword() {
+            const length = parseInt(document.getElementById('pwd-length').value) || 12;
+            const options = {
+                lower: document.getElementById('lower').checked,
+                upper: document.getElementById('upper').checked,
+                numbers: document.getElementById('numbers').checked,
+                symbols: document.getElementById('symbols').checked
+            };
+
+            let chars = '';
+            for (const [type, enabled] of Object.entries(options)) {
+                if (enabled) chars += charSets[type];
+            }
+
+            if (!chars) {
+                alert('请至少选择一种字符类型！');
+                return;
+            }
+
+            let password = '';
+            for (let i = 0; i < length; i++) {
+                password += chars[Math.floor(Math.random() * chars.length)];
+            }
+
+            // 打散字符顺序
+            password = password.split('').sort(() => Math.random() - 0.5).join('');
+            document.getElementById('generated-pwd').value = password;
+        }
+
+        function copyPassword() {
+            const pwdField = document.getElementById('generated-pwd');
+            pwdField.select();
+            document.execCommand('copy');
+            alert('密码已复制到剪贴板！');
+        }
+
+        // ================= 新增历史记录功能 =================
+        const MAX_HISTORY = 10;
+        let history = JSON.parse(localStorage.getItem('pwdHistory') || '[]');
+
+        // 修正函数定义
+        function updateHistory(result) {
+            history.unshift({
+                timestamp: new Date().toLocaleString(),
+                strength: {
+                    level: result.strength.level,
+                    color: result.strength.color
+                },
+                entropy: result.entropy,
+                crackTime: result.crackTime,
+                password:result.password,
+                length: result.password.length
+            });
+
+            if (history.length > MAX_HISTORY) history.pop();
+            localStorage.setItem('pwdHistory', JSON.stringify(history));
+            renderHistory(); // 移动到这里调用
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = history.map(item => `
+                <div class="history-item">
+                    [${item.timestamp}] 
+                    密码: ${item.password} 
+                    ➤ 强度: <span style="color:${item.strength.color}">${item.strength.level}</span>
+                    (破解时间: ${item.crackTime}})
+                </div>
+            `).join('');
+
+            // 添加空状态提示
+            if (history.length === 0) {
+                list.innerHTML = '<div class="history-item">暂无分析记录</div>';
+            }
+        }
+
+        // 新增初始化加载
+        document.addEventListener('DOMContentLoaded', renderHistory);
+
     </script>
 </body>
 </html>
