@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网络安全教学工具：密码强度分析器 by 肖立岚</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #1E1E1E;
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0 40px;
+        }
+
+        .input-group {
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 32px;
+            background: #333333;
+            border: none;
+            color: white;
+            border-radius: 4px;
+        }
+
+        .analyze-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 20px 40px;
+            background: #007ACC;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .analyze-btn:hover {
+            background: #0062A3;
+        }
+
+        .result-panel {
+            background: #333333;
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        .crack-time {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .strength-level {
+            font-size: 16px;
+            color: #CCCCCC;
+        }
+
+        .entropy-value {
+            font-size: 12px;
+            color: #999999;
+        }
+
+        .suggestion {
+            font-size: 12px;
+            color: #AAAAAA;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🔐 密码强度分析器</h1>
+        
+        <div class="input-group">
+            <input type="text" class="password-input" placeholder="输入密码">
+        </div>
+        
+        <button class="analyze-btn" onclick="analyzePassword()">立即分析</button>
+        
+        <div class="result-panel">
+            <div class="result-item crack-time">预计破解时间：-</div>
+            <div class="result-item strength-level">密码强度：-</div>
+            <div class="result-item entropy-value">熵值：-</div>
+            <div class="result-item suggestion">安全建议：等待输入...</div>
+        </div>
+    </div>
+
+    <script>
+        function calculateEntropy(password) {
+            const charSets = {
+                lower: 26,
+                upper: 26,
+                digit: 10,
+                special: 32
+            };
+
+            let charsetSize = 0;
+            if (/[a-z]/.test(password)) charsetSize += charSets.lower;
+            if (/[A-Z]/.test(password)) charsetSize += charSets.upper;
+            if (/\d/.test(password)) charsetSize += charSets.digit;
+            if (/[^a-zA-Z0-9]/.test(password)) charsetSize += charSets.special;
+            
+            return charsetSize === 0 ? 0 : password.length * Math.log2(charsetSize);
+        }
+
+        function estimateCrackTime(entropy) {
+            const ATTACK_SPEED = 1e6;
+            const combinations = Math.pow(2, entropy);
+            let seconds = combinations / ATTACK_SPEED;
+
+            const timeUnits = [
+                ['秒', 1],
+                ['分钟', 60],
+                ['小时', 3600],
+                ['天', 86400],
+                ['年', 31536000]
+            ];
+
+            for (let i = timeUnits.length - 1; i >= 0; i--) {
+                const [unit, divisor] = timeUnits[i];
+                if (seconds >= divisor) {
+                    return `${(seconds / divisor).toLocaleString(undefined, {maximumFractionDigits:1})} ${unit}`;
+                }
+            }
+            return "瞬间";
+        }
+
+        function evaluateStrength(seconds) {
+            if (seconds < 60) return { level: "弱", color: "#FF4444" };
+            if (seconds < 31536000) return { level: "中等", color: "#FFC107" };
+            return { level: "强", color: "#00C853" };
+        }
+
+        function generateSuggestions(password) {
+            const suggestions = [];
+            
+            if (password.length < 12) {
+                suggestions.push("❖ 延长密码至12位以上");
+            }
+
+            let charTypes = 0;
+            if (/[A-Z]/.test(password)) charTypes++;
+            if (/[a-z]/.test(password)) charTypes++;
+            if (/\d/.test(password)) charTypes++;
+            if (/[^a-zA-Z0-9]/.test(password)) charTypes++;
+            if (charTypes < 3) {
+                suggestions.push("❖ 混合3种以上字符类型（大小写+数字+符号）");
+            }
+
+            if (/(.)\1{2}/.test(password)) {
+                suggestions.push("❖ 避免3个以上重复字符（如aaa/111）");
+            }
+
+            if (/123|qwe|asd/i.test(password)) {
+                suggestions.push("❖ 不要使用键盘连续序列");
+            }
+
+            return suggestions.length > 0 
+                ? suggestions.join("\n")
+                : "✅ 当前密码安全性良好";
+        }
+
+        function analyzePassword() {
+            const password = document.querySelector('.password-input').value;
+            
+            if (!password) {
+                alert("请输入要检测的密码");
+                return;
+            }
+
+            if (/[\u4e00-\u9fff]/.test(password)) {
+                alert("密码不能包含中文字符！");
+                document.querySelector('.password-input').value = '';
+                return;
+            }
+
+            const entropy = calculateEntropy(password);
+            const crackTimeText = estimateCrackTime(entropy);
+            const seconds = Math.pow(2, entropy) / 1e6;
+            const strength = evaluateStrength(seconds);
+            const suggestions = generateSuggestions(password);
+
+            // 更新界面
+            document.querySelector('.crack-time').textContent = `预计破解时间：${crackTimeText}`;
+            document.querySelector('.crack-time').style.color = strength.color;
+            document.querySelector('.strength-level').textContent = `密码强度：${strength.level}`;
+            document.querySelector('.strength-level').style.color = strength.color;
+            document.querySelector('.entropy-value').textContent = `熵值：${entropy.toFixed(1)} bits`;
+            document.querySelector('.suggestion').textContent = `安全建议：\n${suggestions}`;
+        }
+    </script>
+</body>
+</html>
