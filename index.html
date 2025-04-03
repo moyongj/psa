@@ -1,10 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <!-- 
+        网络安全教学工具网页版 - 密码强度模拟盒
+        版本：1.0
+        主要功能：
+        - 实时密码强度分析（熵值计算、破解时间预测）
+        - 安全密码生成（可配置字符集）
+        - 本地历史记录存储（使用localStorage）
+        - 响应式布局设计
+
+        安全特性：
+        - 中文输入过滤
+        - 密码生成字符集隔离
+        - 防XSS注入处理（自动转义用户输入）
+    -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>网络安全教学工具：密码强度分析器 by 肖立岚</title>
+    <title>网络安全教学工具：密码强度模拟盒</title>
     <style>
+        /* 全局样式重置 */
         * {
             margin: 0;
             padding: 0;
@@ -12,6 +27,7 @@
             font-family: 'Microsoft YaHei', Arial, sans-serif;
         }
 
+        /* 暗色主题配置 */
         body {
             background-color: #1E1E1E;
             color: white;
@@ -81,11 +97,12 @@
             font-weight: bold;
         }
 
+        /* 密码强度颜色规范 */
         .strength-level {
             font-size: 16px;
             color: #CCCCCC;
         }
-
+        
         .entropy-value {
             font-size: 12px;
             color: #999999;
@@ -173,7 +190,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="title">🔐 网络安全教学工具：密码强度分析器 by 肖立岚</h1>
+        <h1 class="title">🔐 网络安全教学工具：密码强度模拟盒 by 肖立岚</h1>
         
         <div class="input-group">
             <input type="text" class="password-input" placeholder="输入密码">
@@ -235,6 +252,20 @@
     </div>
 
     <script>
+        /**
+         * 密码安全分析模块
+         * 实现标准：NIST SP 800-63B 密码强度指南
+         * 数学基础：信息熵理论
+         */
+
+        /**
+         * 计算密码熵值
+         * @param {string} password - 待分析密码
+         * @returns {number} 熵值（bits）
+         * 算法公式：L * log2(N)
+         * L: 密码长度
+         * N: 实际使用的字符集大小
+         */
         function calculateEntropy(password) {
             const charSets = {
                 lower: 26,
